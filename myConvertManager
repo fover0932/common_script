@@ -1,0 +1,115 @@
+#! /bin/bash
+#--------------------------------------------------------------------------
+menuChoice=""
+file4Conv=""
+file2Conv=""
+tmpVideo=/tmp/video.$$
+tmpFile=/tmp/tmpfile.$$
+trap ' echo "User interrupt!" && rm -f $tmpVideo && rm -f $tmpFile ' EXIT
+#--------------------------------------------------------------------------
+getConfirm() {
+    echo -n "Please enter yes or no: "
+    while true ; do
+	read x
+	case "$x" in
+	    [Yy] | [Yy][Ee][Ss] )
+		return
+		;;
+	    [Nn] | [Nn][Oo] )
+		quit=y
+		return
+		;;
+	    * )
+		echo -n "Please enter yes or no: "
+		;;
+	esac
+    done
+} 
+#--------------------------------------------------------------------------
+setMenuChoice() {
+    echo "options:- "
+    echo "    l) List direction"
+    echo "    s) Single convert"
+    echo "    a) All convert"
+    echo "    q) Quit"
+    echo -n "Enter your option: "
+    read menuChoice
+    return
+}
+#--------------------------------------------------------------------------
+setSingleConvert() {
+    echo -n "Please enter the file you want to convert: "
+    read file4Conv
+
+    echo -n "Please enter a new name: "
+    read file2Conv
+    
+    echo -n "Please choose a fps value: "
+    read _fps
+
+    echo -n "Please choose a scale (like "320:-3"): "
+    read _scale
+
+    echo -n "Please choose a audio-bitrate: "
+    read _abr
+
+    echo -n "Please choose a video-bitrate: "
+    read _vbr
+    
+    echo "converting..."
+    mencoder $file4Conv -o ${file2Conv}.avi -mc 0 -ofps $_fps -vf scale=$_scale -oac mp3lame -lameopts mode=3:cbr:br=$_abr -ovc xvid -xvidencopts bitrate=$_vbr  >> $tmpFile 2>> $tmpFile
+}
+#--------------------------------------------------------------------------
+findVideo() {
+    if [ -n "$tmpVideo" ]; then
+	rm -f $tmpVideo	
+    fi
+    for form in "rmvb" "avi" "flv" "mp4" "3gp" "rm" "mpg" "mkv"
+    do
+	ls | grep '\.'${form}$ >> $tmpVideo
+    done
+}
+
+listDir() {
+    clear 
+    echo "Video files found are following: "
+    findVideo
+    cat < $tmpVideo
+    return
+}
+#------ Start main --------------------------------------------------------
+rm -f $tmpFile
+rm -f $tmpVideo
+
+clear
+echo
+echo -n "Mini convert Manager"
+sleep 1
+
+clear
+quit=n
+while [ "$quit" != "y" ] ; do
+    setMenuChoice
+    case "$menuChoice" in 
+	l ) listDir
+	    ;;
+	s ) 
+	    setSingleConvert 
+	    echo "     "${file2Conv}.avi "Complete, continue?"
+	    getConfirm
+	    ;;
+	a ) 
+	    ;;
+	[Qq] )
+	    quit=y 
+	    ;;
+	* )
+	    echo "Error option!"
+    esac
+done
+
+rm -f $tmpFile
+rm -f $tmpVideo
+echo "Bye,bye!" 
+
+exit 0

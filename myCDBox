@@ -1,0 +1,345 @@
+#! /bin/sh 
+#This is my miniCD manager
+#UpdateTime: 2012-2-23 18:05
+#Location:Xidian University
+
+menuChoice=""
+currentCD=""
+titleFile="title.cdb"
+tracksFile="tracks.cdb"
+tempFile=/tmp/cdb.$$
+trap 'rm -f $tempFile' EXIT
+
+getReturn() {
+    echo -n "Press return: "
+    read x
+    return 
+}
+
+getConfirm() {
+    echo -n "Are you sure? "
+    while true
+    do
+    	read x
+    	case "$x" in
+    	    y | yes | Y | Yes | YES ) 
+    	        return 0
+    	        ;;
+    	    n | no | N | No | NO )
+    	        echo
+    	        echo "Cancelled"
+    	        return 1
+    	        ;;
+    	    * ) 
+    	    	echo
+    	    	echo -n "Please enter yes or no: " 
+    	    	;;
+        esac
+    done
+}
+
+setMenuChoice() {
+    clear
+    echo "Options :-"
+    echo
+    echo "    a) Add new CD"
+    echo "    f) Find CD"
+    echo "    c) Count the CDs and tracks in the catalog"
+    if [ "$cdcatnum" != "" ]; then
+        echo "    l) List tracks information for $cdtitle"
+        echo "    r) Remove $cdtitle"
+        echo "    u) Update track information for $cdtitle"
+    fi
+    echo "    q) Quit"
+    echo
+    echo -n "Please enter choice then press return: "
+    read menuChoice
+    return 0
+}
+
+insertTitle() {
+    echo $* >> $titleFile
+    return 0
+}
+
+insertTrack() {
+    echo $* >> $tracksFile
+    return 0
+}
+
+addRecordTracks() {
+    echo "Enter track information for this CD "
+    echo "When no more tracks enter 'q' "
+    cdtrack=1
+    cdtrtitle=""
+    while [ "$cdtrtitle" != "q" ];
+    do
+        echo -n "Track $cdtrack, track title? "
+        read tmp
+        cdtrtitle=${tmp%%,*}
+        if [ "$tmp" != "$cdtrtitle" ]; then
+            echo "Sorry, no commas allowed! "
+            continue
+        fi
+        if [ -n "$cdtrtitle" ] ; then
+            if [ "$cdtrtitle" != "q" ] ; then
+                insertTrack $cdcatnum,$cdtrack,$cdtrtitle
+            fi
+        else
+            cdtrack=$((cdtrack-1))
+        fi
+        cdtrack=$((cdtrack+1))
+    done
+    return 0
+}
+
+addRecords() {
+    echo -n "Enter catalog name: "
+    sure=n
+    while [ "$sure" != "y" ] ;
+    do
+    	read tmp
+    	grep "^${tmp}," $titleFile > $tempFile
+    	set $(wc -l $tempFile)
+    	rt=$1
+    	case "$rt" in 
+    	    0 ) 
+    	        cdcatnum=${tmp%%,*}
+    	        sure=y
+    	        ;;
+    	    * )	
+    		echo -n "used it, please choose another name: "
+    		;;
+    	esac
+    done
+    
+    echo -n "Enter title: "
+    read tmp
+    cdtitle=${tmp%%,*}
+    
+    echo -n "Enter type: "
+    read tmp
+    cdtype=${tmp%%,*}
+    
+    echo -n "Enter artist/composer: "
+    read tmp
+    cdac=${tmp%%,*}
+    
+    #check information
+    echo About to add new entry
+    echo "$cdcatnum $cdtitle $cdtype $cdac"
+    #if confirmed then append it to the title file
+    
+    if getConfirm ; then
+    	insertTitle $cdcatnum,$cdtitle,$cdtype,$cdac
+    	addRecordTracks
+    else
+    	removeCD
+    fi
+    return 0
+}
+
+findCD() {
+    if [ "$1" = "n" ]; then
+    	asklist=n
+    else
+    	asklist=y
+    fi
+    
+    cdcatnum=""
+    echo -n "Enter a string to search for in the CD titles: "
+    read searchstr
+    if [ "$searchstr" = "" ]; then
+    	return 1
+    fi
+    
+    grep "$searchstr" $titleFile > $tempFile
+    set $(wc -l $tempFile)
+    linesfound=$1
+    case "$linesfound" in
+    	0 )
+    	    echo "Sorry nothing found"
+    	    getReturn
+    	    return 1
+    	    ;;
+    	1 )
+            ;;
+        * )
+            echo "Sorry, not unique"
+            echo "Found the following"
+            cat $tempFile
+            getReturn
+            return 1
+    esac
+    
+    IFS=","
+    read cdcatnum cdtitle cdtype cdac < $tempFile
+    IFS=" "
+    
+    if [ -z "cdcatnum" ]; then
+    	echo "Sorry,cound not extract catalog field from $tempFile"
+        getReturn
+        return 1
+    fi
+    
+    echo 
+    echo Catalog number: $cdcatnum
+    echo Title: $cdtitle
+    echo Type: $cdtype
+    echo Artist/Composer: $cdac
+    echo
+    getReturn
+    
+    if [ "$asklist" = "y" ]; then
+    	echo -n "View tracks for this CD? "
+    	read x
+    	if [ "$x" = "y" ]; then
+    	    echo
+    	    listTracks
+    	    echo
+    	fi
+    fi
+    return 0        
+}
+
+updateCD() {
+    if [ -z "cdcatnum" ]; then
+    	echo "You must select a CD first!"
+    	findCD n
+    fi
+    
+    if [ -n "$cdcatnum" ]; then
+    	echo "Current tracks are :-"
+    	listTracks
+    	echo
+    	
+    	echo "This will re-enter the tracks for $cdtitle"
+    	getConfirm && {
+    	    grep -v "^${cdcatnum}," $tracksFile > $tempFile
+    	    mv $tempFile $tracksFile
+    	    echo
+    	    addRecordTracks
+    	}
+    fi
+    return 0
+}
+
+countCDs() {
+    set $(wc -l $titleFile)
+    numTitles=$1
+    set $(wc -l $tracksFile)
+    numTracks=$1
+    echo "Found $numTitles CDs, with a totle of $numTracks tracks"
+    getReturn
+    return 0
+}
+
+removeCD() {
+    if [ -z "$cdcatnum" ]; then
+    	echo "You must select a CD first!"
+    findCD n
+    fi
+    
+    if [ -n "$cdcatnum" ]; then
+    	echo "You are about to delect $cdtitle"
+    	getConfirm && {
+    	    grep -v "^${cdcatnum}," $titleFile > $tempFile
+    	    mv $tempFile $titleFile
+    	    grep -v "^${cdcatnum}," $tracksFile >$tempFile
+    	    mv $tempFile $tracksFile
+    	    cdcatnum=""
+    	    echo "Entry removed"
+    	    
+    	}
+    	getReturn
+    fi
+    return 0
+}
+
+listTracks() {
+    if [ "$cdcatnum" = "" ]; then
+    	echo "No CD select yet" 
+    	return 1
+    else
+    	grep "^${cdcatnum}," $tracksFile > $tempFile
+    	numTracks=$(wc -l $tempFile)
+    	if [ "$numTracks" = "0" ]; then
+    	echo "No tracks found for $cdtitle"
+    	else
+    	    {
+    	    	echo
+    	    	echo "$cdtitle :- "
+    	    	echo
+    	    	cut -f 2- -d , $tempFile
+    	    	echo 
+    	    } | ${PAGER:-more}
+    	fi
+    fi
+    getReturn
+    return 0
+}
+
+
+rm -f $tempFile
+if [ ! -f $titleFile ] ; then
+    touch $titleFile
+fi
+if [ ! -f $tracksFile ] ; then
+    touch $tracksFile
+fi
+
+#Now the application proper
+
+clear
+echo
+echo
+echo "               Mini CD manager"
+sleep 1
+
+quit=n
+while [ "$quit" != "y" ]; 
+do
+    setMenuChoice
+    case "$menuChoice" in
+    	a )
+	    addRecords
+	    ;;
+	r )
+	    removeCD
+	    ;;
+	f )
+	    findCD y
+	    ;;
+	u )
+	    updateCD
+	    ;;
+	c )
+	    countCDs
+	    ;;
+	l ) 
+	    listTracks
+	    ;;
+	b )
+	    echo 
+	    more $titleFile
+	    echo
+	    getReturn
+	    ;;
+        q | Q ) 
+            quit=y 
+            
+            ;;
+        * ) 
+            echo
+            echo "Sorry, choice not recognized!" 
+            sleep 1 
+            ;;
+    esac
+done
+
+#Tidy up and leave
+
+rm -f $tempFile
+echo "Bye,bye!"
+
+exit 0
