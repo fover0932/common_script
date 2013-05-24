@@ -1,4 +1,4 @@
-commom_script
+common_script
 =============
 
 Some  useful script on linux platform 
