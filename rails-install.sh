@@ -1,0 +1,32 @@
+#!/bin/sh
+
+# This script is used to install ruby/rails environment in ubuntu 12.04.
+# !!!IMPORTANT!!! Please ensure the software source is full and good.
+
+# install third-part libs
+sudo apt-get install -y wget vim build-essential openssl libreadline6 libreadline6-dev libmysqlclient-dev curl git-core zlib1g zlib1g-dev libssl-dev libyaml-dev libxml2-dev libxslt-dev libcurl4-openssl-dev autoconf automake libtool imagemagick libmagickwand-dev libpcre3-dev nodejs libpq-dev 
+
+# clear ubuntu rvm trash
+#sudo apt-get --purge remove ruby-rvm ruby
+#sudo rm -rf /usr/share/ruby-rvm /etc/rvmrc /etc/profile.d/rvm.sh
+#sudo rm -rf ~/.rvm* ~/.gem* ~/.bundle*
+
+# disable rdoc and ri document
+echo 'gem: --no-rdoc --no-ri' >> ~/.gemrc
+tail ~/.gemrc
+
+# install rvm
+curl -L https://get.rvm.io | bash -s stable --ruby
+
+# set bash support
+echo "[[ -s "$HOME/.rvm/scripts/rvm" ]] && . "$HOME/.rvm/scripts/rvm" " >> ~/.bashrc
+source ~/.bashrc
+
+# list version of rvm
+rvm -v 
+
+# install requirements based on OS
+rvm requirements
+
+# install latest ruby version
+rvm install ruby
