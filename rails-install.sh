@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # This script is used to install ruby/rails environment in ubuntu 12.04.
-# !!!IMPORTANT!!! Please ensure the software source is full and good.
+
 
 # install third-part libs
 sudo apt-get install -y wget vim build-essential openssl libreadline6 libreadline6-dev libmysqlclient-dev curl git-core zlib1g zlib1g-dev libssl-dev libyaml-dev libxml2-dev libxslt-dev libcurl4-openssl-dev autoconf automake libtool imagemagick libmagickwand-dev libpcre3-dev nodejs libpq-dev gawk libsqlite3-dev sqlite3 libgdbm-dev libncurses5-dev bison libffi-dev
@@ -26,6 +26,8 @@ source ~/.bashrc
 rvm -v 
 
 # install requirements based on OS
+# !!!IMPORTANT!!! 
+# Please ensure the software source is full and without any error & warnings.
 rvm requirements
 
 # install latest ruby version
